@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env.production
+    volumes:
+      - ./uploads:/uploads
+      - db_data:/data
+    # 正式環境：由 host machine 的 cloudflared tunnel 轉入
+    ports:
+      # 可用 .env 控制：BACKEND_BIND / BACKEND_PORT
+      - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-3001}:8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # API URL（從根目錄 .env 注入；未設定則直接讓 compose 報錯）
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL is required}
+    ports:
+      # 可用 .env 控制：FRONTEND_BIND / FRONTEND_PORT
+      - "${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+
+volumes:
+  db_data:

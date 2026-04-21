@@ -1,0 +1,23 @@
+# ── System dependency (not pip) ───────────────────────────────
+# exiftool is required as the primary EXIF reader.
+# Install before running the backend:
+#   macOS  : brew install exiftool
+#   Debian : apt-get install -y libimage-exiftool-perl
+#   Docker : see backend/Dockerfile (installed automatically)
+# If exiftool is absent the service falls back to piexif (limited MakerNote support).
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+PyYAML==6.0.2
+sqlalchemy==2.0.36
+aiosqlite==0.20.0
+greenlet==3.1.1
+python-dotenv==1.0.1
+httpx==0.28.1
+cryptography==44.0.0
+Pillow==11.1.0
+piexif==1.1.3
+apscheduler==3.10.4
+python-multipart==0.0.20
+itsdangerous==2.2.0
+starlette==0.41.3
