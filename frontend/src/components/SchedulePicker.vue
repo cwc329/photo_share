@@ -44,6 +44,14 @@ const error = ref('')
 
 const MIN_MINUTES = 1
 
+function _formatLocalDatetimeInput(d) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  )
+}
+
 function _minAllowedDate() {
   // datetime-local 沒有秒；用「分鐘」做限制：
   // 例如現在 12:05:11，允許排到 12:06:00（而不是 12:06:11）
@@ -55,7 +63,7 @@ function _minAllowedDate() {
 
 // Minimum = MIN_MINUTES from now (recomputed on each access)
 const minDatetime = computed(() => {
-  return _minAllowedDate().toISOString().slice(0, 16)
+  return _formatLocalDatetimeInput(_minAllowedDate())
 })
 
 function setMode(m) {
@@ -86,6 +94,7 @@ function onDatetimeInput(e) {
     emit('update:scheduledAt', null)
     return
   }
+  // 統一送 UTC（Z）字串，避免 client 端處理 offset 格式
   emit('update:scheduledAt', selected.toISOString())
 }
 

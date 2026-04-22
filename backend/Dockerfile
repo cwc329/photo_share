@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE 8001
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--log-config", "logging_uvicorn.yaml"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8001 --log-config logging_uvicorn.yaml --proxy-headers --forwarded-allow-ips ${FORWARDED_ALLOW_IPS:-127.0.0.1,172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}"]

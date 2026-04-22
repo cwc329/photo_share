@@ -98,11 +98,30 @@ const apiBase = import.meta.env.VITE_API_BASE_URL
 
 const statusLabel = (s) => ({ pending: '待發佈', published: '已發佈', failed: '失敗', cancelled: '已取消' }[s] || s)
 
+const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+function getLocalOffsetLabel(d = new Date()) {
+  const parts = new Intl.DateTimeFormat('zh-TW', { timeZoneName: 'shortOffset' }).formatToParts(d)
+  return parts.find((p) => p.type === 'timeZoneName')?.value || 'GMT'
+}
+
+function parseUtcLike(dt) {
+  // 後端若回傳無時區資訊的 ISO（例如 2026-04-23T10:00:00），其語意通常是 UTC。
+  // JS 對「無時區」字串會視為 local time，導致畫面顯示少了時區轉換。
+  if (!dt) return null
+  if (dt instanceof Date) return dt
+  if (typeof dt !== 'string') return new Date(dt)
+  const hasTz = /([zZ]|[+-]\d{2}:\d{2})$/.test(dt)
+  return new Date(hasTz ? dt : `${dt}Z`)
+}
+
 function formatDate(dt) {
-  return new Date(dt).toLocaleString('zh-TW', {
+  const d = parseUtcLike(dt)
+  if (!d || Number.isNaN(d.getTime())) return String(dt ?? '')
+  const local = d.toLocaleString('zh-TW', {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
+  return `${local}（${getLocalOffsetLabel(d)} ${userTimeZone}）`
 }
 
 function formatExpiry(dt) {

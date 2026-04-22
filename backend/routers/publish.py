@@ -21,6 +21,38 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/h
 MAX_SIZE_MB = 20
 UPLOAD_DIR = Path(__file__).parent.parent.parent / "uploads"
 
+def _parse_client_datetime_to_utc(dt_str: str) -> datetime:
+    """
+    規則：
+    - 若字串無時區資訊（naive），視為 UTC。
+    - 若字串有時區資訊（offset / Z），轉成 UTC。
+    回傳 tz-aware UTC datetime。
+    """
+    s = (dt_str or "").strip()
+    if not s:
+        raise ValueError("Empty datetime")
+    # Allow 'Z' suffix
+    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _utc_aware_to_db_naive(dt_utc: datetime) -> datetime:
+    """DB 一律存 naive datetime，語意固定為 UTC。"""
+    if dt_utc.tzinfo is None:
+        dt_utc = dt_utc.replace(tzinfo=timezone.utc)
+    return dt_utc.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _db_naive_utc_to_iso_z(dt_utc_naive: datetime | None) -> str | None:
+    """將 DB naive UTC datetime 轉成帶 Z 的 ISO 字串。"""
+    if dt_utc_naive is None:
+        return None
+    dt_aware = (dt_utc_naive.replace(tzinfo=timezone.utc)
+                if dt_utc_naive.tzinfo is None else dt_utc_naive.astimezone(timezone.utc))
+    return dt_aware.isoformat().replace("+00:00", "Z")
+
 
 class PublishIntent(BaseModel):
     """建立排程時的欄位驗證（不含圖檔；圖檔於路由內驗證並寫入 uploads）。"""
@@ -96,7 +128,7 @@ async def create_post(
         raise HTTPException(status_code=400, detail="Invalid image file")
 
     try:
-        sched = datetime.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+        sched_utc = _parse_client_datetime_to_utc(scheduled_at)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scheduled_at")
 
@@ -114,7 +146,7 @@ async def create_post(
             ig_account_db_id=int(iid) if iid else None,
             caption=caption,
             platforms=platforms_list,
-            scheduled_at=sched,
+            scheduled_at=sched_utc,
         )
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
@@ -125,7 +157,7 @@ async def create_post(
         image_path=image_filename,
         caption=intent.caption,
         platforms=intent.platforms,
-        scheduled_at=intent.scheduled_at,
+        scheduled_at=_utc_aware_to_db_naive(intent.scheduled_at),
         status="pending",
     )
 
@@ -171,7 +203,7 @@ async def create_post(
     return {
         "id": post.id,
         "status": post.status,
-        "scheduled_at": post.scheduled_at,
+        "scheduled_at": _db_naive_utc_to_iso_z(post.scheduled_at),
         "platforms": post.platforms,
     }
 
@@ -209,10 +241,10 @@ async def list_posts(request: Request, db: AsyncSession = Depends(get_db)):
         "image_path": p.image_path,
         "caption": p.caption,
         "platforms": p.platforms,
-        "scheduled_at": p.scheduled_at,
+        "scheduled_at": _db_naive_utc_to_iso_z(p.scheduled_at),
         "status": p.status,
         "error_message": p.error_message,
-        "created_at": p.created_at,
+        "created_at": _db_naive_utc_to_iso_z(p.created_at),
     } for p in posts]
 
 
