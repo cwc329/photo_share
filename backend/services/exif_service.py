@@ -182,10 +182,10 @@ def _lens_spec_tags(lens_name: str) -> list[str]:
 
 
 def _aperture_tag(fn: float) -> str:
-    """2.8 → '#F28'、1.8 → '#F18'、11.0 → '#F11'"""
+    """2.8 → '#F2_8'、1.8 → '#F1_8'、11.0 → '#F11'（小數用 _ 與整數 F32 區隔）"""
     if fn == round(fn):
         return f"#F{int(fn)}"
-    return "#F" + str(round(fn, 1)).replace(".", "")
+    return "#F" + str(round(fn, 1)).replace(".", "_")
 
 
 def _shutter_tag(exp: float) -> str:
