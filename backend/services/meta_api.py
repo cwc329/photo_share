@@ -113,7 +113,7 @@ async def _ig_container_flow_inner(
                 container_id = container_data["id"]
                 break
             err = container_data["error"]
-            print(f"container_data: {container_data}")
+            logger.info("IG media container error response: %s", container_data)
             if _ig_media_create_error_should_retry(err) and attempt + 1 < _IG_MEDIA_CREATE_MAX_ATTEMPTS:
                 logger.warning(
                     "IG media container transient error (attempt %d/%d), retry in %ds: %s",
