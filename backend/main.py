@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -74,14 +74,47 @@ app.include_router(media.router, prefix="/media", tags=["media"])
 app.include_router(publish.router, prefix="/posts", tags=["posts"])
 
 
-@app.get("/robots.txt", response_class=PlainTextResponse)
-async def robots_txt():
-    return ("User-agent: facebookexternalhit\n"
-            "Allow: /\n\n"
-            "User-agent: Facebot\n"
-            "Allow: /\n\n"
-            "User-agent: *\n"
-            "Allow: /\n")
+_ROBOTS_TXT = (
+    "User-agent: facebookexternalhit\n"
+    "Allow: /\n\n"
+    "User-agent: facebookexternalhit/1.1\n"
+    "Allow: /\n\n"
+    "User-agent: meta-externalagent\n"
+    "Allow: /\n\n"
+    "User-agent: Facebot\n"
+    "Allow: /\n\n"
+    "User-agent: *\n"
+    "Allow: /\n"
+).encode()
+
+
+@app.get("/robots.txt")
+async def robots_txt(request: Request):
+    total = len(_ROBOTS_TXT)
+    range_header = request.headers.get("range")
+    if range_header:
+        range_val = range_header.removeprefix("bytes=")
+        start_str, _, end_str = range_val.partition("-")
+        start = int(start_str) if start_str else 0
+        end = int(end_str) if end_str else total - 1
+        end = min(end, total - 1)
+        return Response(
+            content=_ROBOTS_TXT[start:end + 1],
+            status_code=206,
+            headers={
+                "Content-Type": "text/plain; charset=utf-8",
+                "Content-Range": f"bytes {start}-{end}/{total}",
+                "Accept-Ranges": "bytes",
+            },
+        )
+    return Response(
+        content=_ROBOTS_TXT,
+        status_code=200,
+        headers={
+            "Content-Type": "text/plain; charset=utf-8",
+            "Accept-Ranges": "bytes",
+        },
+    )
 
 
 @app.get("/health")
