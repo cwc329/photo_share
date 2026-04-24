@@ -76,11 +76,14 @@ app.include_router(publish.router, prefix="/posts", tags=["posts"])
 
 _ROBOTS_TXT = (
     "User-agent: facebookexternalhit\n"
-    "Allow: /\n\n"
+    "Allow: /\n"
+    "Disallow:\n\n"
     "User-agent: facebookexternalhit/1.1\n"
-    "Allow: /\n\n"
+    "Allow: /\n"
+    "Disallow:\n\n"
     "User-agent: meta-externalagent\n"
-    "Allow: /\n\n"
+    "Allow: /\n"
+    "Disallow:\n\n"
     "User-agent: Facebot\n"
     "Allow: /\n\n"
     "User-agent: *\n"
