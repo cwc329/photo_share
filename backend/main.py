@@ -2,10 +2,11 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 logging.basicConfig(
@@ -34,8 +35,22 @@ async def lifespan(app: FastAPI):
     scheduler_service.shutdown()
 
 
+logger = logging.getLogger(__name__)
+
+
+class UploadsLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/uploads/") or request.url.path.endswith("/robots.txt"):
+            ua = request.headers.get("user-agent", "<none>")
+            logger.info("UPLOADS request: %s %s | UA: %s | IP: %s",
+                        request.method, request.url.path, ua,
+                        request.headers.get("cf-connecting-ip") or request.client.host)
+        return await call_next(request)
+
+
 app = FastAPI(title="Photo Share API", lifespan=lifespan)
 
+app.add_middleware(UploadsLoggingMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
